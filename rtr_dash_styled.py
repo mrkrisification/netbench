@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jan 11 18:21:02 2019
-
-@author: creze
 """
 
 import dash
@@ -13,6 +11,8 @@ import plotly.figure_factory as ff
 from dash.dependencies import Input, Output
 import pandas as pd
 import numpy as np
+import matplotlib.colors as mc
+from matplotlib import cm
 import json
 from textwrap import dedent as d
 from PIL import Image
@@ -30,15 +30,30 @@ df = pd.read_csv('rtr-data.csv')
 modelmask = np.array(Image.open('mask.png'))
 modelmask[modelmask==1]=255
 
+
+
+# setting some colors for different plots
 opcolors = {'A1': 'rgb(218,41,28)',
             'H3A': 'rgb(0,0,0)',
             'TMA': 'rgb(226,0,116)'}
 
-#some colors
+# colors to match with css
 plot_background = '#f4efef'
 paper_background = '#f4efef'
-cmap = 'plasma'
 
+# cmap for wordcloud
+cmapwordcloud = 'plasma'
+
+# colors for nettype plot
+distinctcolors = []
+colorlist = cm.get_cmap('tab20b', 20)
+for i in range(colorlist.N):
+    rgb = colorlist(i)[:3]
+    # will return rgba, we take only first 3 so we get rgb
+    distinctcolors.append(mc.rgb2hex(rgb))
+distinctcolors.reverse()
+
+# graph font header
 
 app.layout= html.Div(children=
     [
@@ -58,12 +73,8 @@ app.layout= html.Div(children=
                 > Only observations, with location info and recorded MNC are used for this dashboard.  
                 > Select the __political district__ of interest, and __down- upload-speed__ from dropdown menue (or select area on map) to explore data.
                 '''))
-        ], className='eight columns'),
-        html.Div([
-            dcc.Markdown(d('''
-            heres the table with some general data. Start & End-Date, Entries, etc.
-             ''')),
-        ], className='four columns'),
+        ], className='twelve columns'),
+
     ], className='row'),
 
 
@@ -108,9 +119,9 @@ app.layout= html.Div(children=
             dcc.Graph( id = 'observation_count'),
             ], className='four columns'),
             html.Div([
-                dcc.Markdown(d('''
-                    Used Devices
-                    ''')),
+                html.P('Used Devices', style={'font-family': 'Verdana',
+                                              'font-size': 18,
+                                              }),
                 html.Img(id='wordcloud', style={
                     'max-width': '100%',
                 }),
@@ -192,7 +203,7 @@ def generate_wordcloud(district_dd, selectedrange):
 
     text = dff.model.to_string()
     wordcloud = WordCloud(width=300, height=200, max_words=50, background_color= plot_background,
-                          mask=modelmask, colormap=cmap).generate_from_text(text)
+                          mask=modelmask, colormap=cmapwordcloud).generate_from_text(text)
 
     in_mem_file = BytesIO()
     img = wordcloud.to_image()
@@ -280,21 +291,20 @@ def update_networkmodes(district_dd, KPI_selection, selectedrange):
         if selection_is_in(dff['open_test_uuid'], selectedrange):
             dff = dff[dff['open_test_uuid'].isin(selectedrange)]
 
-    data = []
     netsorted = dff.network.sort_values().unique()
+    nettypes = dff.network_type.unique()
+    colors = distinctcolors
+    data = []
 
-    for net in dff.network_type.unique():
-        trace = go.Bar(x=netsorted,
-                       y=[dff[(dff.network_type == net) & (dff.network == i)]['network_type'].count() for i in netsorted],
-                       name=net,)
+    for nettype in nettypes:
+        trace = go.Bar(
+            x=netsorted,
+            y=[dff[(dff.network_type == nettype) & (dff.network == n)]['network_type'].count() for n in netsorted],
+            name=nettype,
+            marker=dict(color=colors[nettypes.tolist().index(nettype)]))
         data.append(trace)
 
-        layout = {
-            'yaxis': {'title': 'Network Type'},
-            'barmode': 'stack',
-            'title': 'Network Types',
-        };
-
+    layout = go.Layout(barmode='stack', title="Network Types")
     fig = go.Figure(data=data, layout=layout)
     fig['layout'].update(legend=dict(orientation='h'), plot_bgcolor=plot_background,
                          paper_bgcolor=paper_background, margin=go.layout.Margin(t=30))
