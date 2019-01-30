@@ -23,6 +23,8 @@ from io import BytesIO
 
 
 app = dash.Dash(__name__)
+server = app.server
+app.title = "Network Benchmark Austria"
 
 df = pd.read_csv('rtr-data.csv')
 
