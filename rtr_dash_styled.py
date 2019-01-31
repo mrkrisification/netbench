@@ -55,7 +55,11 @@ for i in range(colorlist.N):
     distinctcolors.append(mc.rgb2hex(rgb))
 distinctcolors.reverse()
 
-# graph font header
+# infos on dataset
+startdate= pd.datetime.strptime(df.time.min(), '%Y-%m-%d %H:%M:%S').date()
+enddate = pd.datetime.strptime(df.time.max(), '%Y-%m-%d %H:%M:%S').date()
+nrentries = df.time.count()
+infotext = "Network Benchmark incorporates {:,} tests, conducted between {} and {} ".format(nrentries, startdate, enddate)
 
 app.layout= html.Div(children=
     [
@@ -71,10 +75,12 @@ app.layout= html.Div(children=
     html.Div([
         html.Div([
             dcc.Markdown(d('''
-                > Benchmark of networks in Austria, operated by A1, Deutsche Telekom and Hutchison Drei Austria, based on open data from [RTR-Netztest](https://www.netztest.at/de/Opendata)  
-                > Only observations, with location info and recorded MNC are used for this dashboard.  
-                > Select the __political district__ of interest, and __down- upload-speed__ from dropdown menue (or select area on map) to explore data.
-                '''))
+                > Network Benchmark Austria compares down- and upload speeds of mobile networks, operated by A1, Deutsche Telekom and Hutchison Drei Austria, based on open data from [RTR-Netztest](https://www.netztest.at/de/Opendata)  
+                > Only tests, with location info and recorded MNC are used for this dashboard.  
+                > Select the __political district__ of interest, and __down- upload-speed__ from dropdown menue (or select area on map) to explore data.  
+                ''')),
+            html.P(infotext),
+
         ], className='twelve columns'),
 
     ], className='row'),
@@ -145,7 +151,17 @@ app.layout= html.Div(children=
                     ], style={'display': 'none'}),
 
                 ], className='four columns'),
+    ], className='row'),
+    html.Div([
+        html.Div([
+            dcc.Markdown(d('''Source code available on [github](https://github.com/mrkrisification/netbench)'''))
+        ], className='six columns'),
+    html.Div([
+            dcc.Markdown(d('''Powered by [heroku.com](https://www.heroku.com/)'''))
+        ], className='six columns', style={'text-align': 'right'})
     ], className='row')
+
+
 
 
 
@@ -242,7 +258,7 @@ def update_observation_count(district_dd, selectedrange):
                    marker=dict(colors=colors,
                                line=dict(color='#000000', width=2)))
 
-    layout = go.Layout(title =  'Count of Observations', legend=dict(orientation='h'), plot_bgcolor=plot_background,
+    layout = go.Layout(title='Nr. of Tests', legend=dict(orientation='h'), plot_bgcolor=plot_background,
                          paper_bgcolor=paper_background, margin=go.layout.Margin(t=30))
 
     fig = go.Figure([trace], layout)
