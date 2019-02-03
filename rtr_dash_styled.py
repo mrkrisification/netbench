@@ -6,6 +6,7 @@ Created on Fri Jan 11 18:21:02 2019
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table
 import plotly.graph_objs as go
 import plotly.figure_factory as ff
 from dash.dependencies import Input, Output
@@ -32,7 +33,11 @@ df = pd.read_csv('rtr-data.csv')
 modelmask = np.array(Image.open('mask.png'))
 modelmask[modelmask==1]=255
 
-
+# setting columns for datatable at bottom
+tablecols = ['network','download_Mbit', 'upload_Mbit', 'cat_technology', 'ping_ms',
+       'network_type', 'lat', 'long', 'platform', 'model',
+       'network_mcc_mnc', 'network_name', 'cell_area_code',
+       'cell_location_id', 'time', 'district', 'open_test_uuid']
 
 # setting some colors for different plots
 opcolors = {'A1': 'rgb(218,41,28)',
@@ -84,8 +89,6 @@ app.layout= html.Div(children=
         ], className='twelve columns'),
 
     ], className='row'),
-
-
 
      html.Div([
         #steering element row
@@ -159,8 +162,36 @@ app.layout= html.Div(children=
     html.Div([
             dcc.Markdown(d('''Powered by [heroku.com](https://www.heroku.com/)'''))
         ], className='six columns', style={'text-align': 'right'})
+    ], className='row'),
+    html.Div([
+        html.Div([
+            dcc.Markdown(d('''
+                ##### Tests included  
+                The table consists of all tests selected above. It can be sorted by column.  
+                > To filter enter selection criteria in 2nd row: "eq" for equal ">/<" for higher / lower than. eg.  
+                > __eq "A1"__ in column network will filter to A1  
+                > __< "150"__ in column download_Mbit will filter all entries lower than 150 Mbit
+                ''')),
+            dash_table.DataTable(id='table',
+                                 columns=[{'id': c, 'name': c} for c in tablecols],
+                                 sorting=True,
+                                 sorting_type='multi',
+                                 sorting_settings=[],
+                                 filtering=True,
+                                 style_table= {'overflowX': 'scroll'},
+                                 style_cell_conditional=[
+                                            {
+                                                'if': {'row_index': 'odd'},
+                                                'backgroundColor': paper_background,
+                                            }
+                                        ],
+                                 style_header={
+                                            'backgroundColor': 'white',
+                                            'fontWeight': 'bold'
+                                        }
+                                 )
+        ], className='twelve columns'),
     ], className='row')
-
 
 
 
@@ -189,6 +220,25 @@ def selection_is_in(dfseries, selection):
         return contained
     except:
         print('could not check')
+
+# callbacks
+@app.callback(
+        Output('table', 'data'),
+        [Input('district_dd','value'),
+         Input('KPI_selection', 'value'),
+         Input('selectedrange', 'children')
+         ])
+def update_table(district_dd, KPI_selection, selectedrange):
+
+    dff = df[df.district == district_dd]
+
+    # check if there is points in dff in selected range - if yes, use for selection
+    if selectedrange:
+        if selection_is_in(dff['open_test_uuid'], selectedrange):
+            dff = dff[dff['open_test_uuid'].isin(selectedrange)]
+
+    return dff.to_dict('rows')
+
 
 @app.callback(
     Output('selectedrange', 'children'),
